@@ -36,7 +36,7 @@ export default function Upload() {
     formData.append('player', playerName)
 
     try {
-      const res = await fetch('https://hurling-swing-backend.onrender.com/analyse', {
+      const res = await fetch('https://hurling-swing-analyser.onrender.com/analyse', {
         method: 'POST',
         body: formData,
       })
