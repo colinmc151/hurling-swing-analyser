@@ -54,31 +54,31 @@ export default function Upload() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-950">
       <NavBar title="New analysis" backTo="/" />
       <div className="px-5 py-5 flex flex-col gap-6">
         <div>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Your video</p>
-          <label className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-gray-300 hover:bg-gray-50 transition-all">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Your video</p>
+          <label className="w-full border-2 border-dashed border-white/10 rounded-2xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-white/20 hover:bg-white/5 transition-all">
             <input type="file" accept="video/*" className="hidden" onChange={handleFile} />
             {file ? (
               <>
-                <div className="w-16 h-11 bg-gray-900 rounded-lg flex items-center justify-center text-white text-xl">▶</div>
-                <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                <p className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                <div className="w-16 h-11 bg-white/10 rounded-lg flex items-center justify-center text-white text-xl">▶</div>
+                <p className="text-sm font-medium text-white">{file.name}</p>
+                <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
               </>
             ) : (
               <>
-                <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center text-2xl">📹</div>
-                <p className="text-sm font-medium text-gray-900">Tap to select video</p>
-                <p className="text-xs text-gray-400">MP4, MOV up to 200MB</p>
+                <div className="w-14 h-14 bg-amber-400/20 rounded-full flex items-center justify-center text-2xl">📹</div>
+                <p className="text-sm font-medium text-white">Tap to select video</p>
+                <p className="text-xs text-gray-500">MP4, MOV up to 200MB</p>
               </>
             )}
           </label>
         </div>
 
         <div>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Swing type</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Swing type</p>
           <div className="grid grid-cols-2 gap-2">
             {swingTypes.map((t) => (
               <button
@@ -86,8 +86,8 @@ export default function Upload() {
                 onClick={() => setSelectedSwing(t)}
                 className={`p-3 rounded-xl border text-sm font-medium transition-all ${
                   selectedSwing === t
-                    ? 'border-gray-900 bg-gray-900 text-white'
-                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    ? 'border-amber-400 bg-amber-400 text-gray-900'
+                    : 'border-white/10 text-gray-400 hover:border-white/20'
                 }`}
               >
                 {t}
@@ -97,25 +97,25 @@ export default function Upload() {
         </div>
 
         <div>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Compare against</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Compare against</p>
           <div className="flex flex-col gap-2">
             {players.map((p) => (
               <button
                 key={p.id}
                 onClick={() => setSelectedPlayer(p.id)}
                 className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left ${
-                  selectedPlayer === p.id ? 'border-gray-900 border-2' : 'border-gray-100 hover:border-gray-200'
+                  selectedPlayer === p.id ? 'border-amber-400 border-2' : 'border-white/10 hover:border-white/20'
                 }`}
               >
-                <div className="w-11 h-11 rounded-full bg-purple-100 flex items-center justify-center text-sm font-medium text-purple-800 shrink-0">
+                <div className="w-11 h-11 rounded-full bg-purple-900/50 flex items-center justify-center text-sm font-medium text-purple-300 shrink-0">
                   {p.initials}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                  <p className="text-xs text-gray-400">{p.role}</p>
+                  <p className="text-sm font-medium text-white">{p.name}</p>
+                  <p className="text-xs text-gray-500">{p.role}</p>
                 </div>
                 <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${
-                  selectedPlayer === p.id ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-300'
+                  selectedPlayer === p.id ? 'bg-amber-400 border-amber-400 text-gray-900' : 'border-gray-600'
                 }`}>
                   {selectedPlayer === p.id && '✓'}
                 </div>
@@ -125,13 +125,13 @@ export default function Upload() {
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
+          <div className="p-3 bg-red-900/30 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>
         )}
 
         <button
           onClick={handleAnalyse}
           disabled={loading}
-          className="w-full py-4 bg-gray-900 text-white rounded-2xl font-medium hover:bg-gray-800 transition-all disabled:opacity-50"
+          className="w-full py-4 bg-amber-400 text-gray-900 rounded-2xl font-semibold hover:bg-amber-300 transition-all disabled:opacity-50"
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
