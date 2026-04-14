@@ -12,10 +12,25 @@ const labels = {
   wrist_snap: 'Wrist snap',
 }
 
+const playerInitials = {
+  'Henry Shefflin': 'HS',
+  'Joe Canning': 'JC',
+  'Cian Lynch': 'CL',
+  'D.J. Carey': 'DJ',
+}
+
+const playerCounty = {
+  'Henry Shefflin': 'Kilkenny',
+  'Joe Canning': 'Galway',
+  'Cian Lynch': 'Limerick',
+  'D.J. Carey': 'Kilkenny',
+}
+
 export default function Results() {
   const navigate = useNavigate()
   const location = useLocation()
   const result = location.state?.result
+  const swingType = location.state?.swingType
 
   if (!result) {
     return (
@@ -42,6 +57,21 @@ export default function Results() {
 
   const score = result.overall_score
   const dashLength = (score / 100) * 251
+  const player = result.player_compared
+  const initials = playerInitials[player] || '??'
+  const county = playerCounty[player] || ''
+
+  async function handleShare() {
+    const text = `SwingCoach Hurling\nSwing score: ${score}/100 vs ${player}\n${score >= 80 ? 'Excellent!' : score >= 60 ? 'Good progress!' : 'Keep practising!'}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'SwingCoach Hurling', text })
+      } catch (e) {}
+    } else {
+      await navigator.clipboard.writeText(text)
+      alert('Score copied to clipboard!')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -54,7 +84,21 @@ export default function Results() {
             ←
           </button>
           <h1 className="text-lg font-medium text-white">Swing analysis</h1>
-          <span className="ml-auto text-xs text-white/60">vs {result.player_compared}</span>
+          <button
+            onClick={handleShare}
+            className="ml-auto w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white text-sm"
+          >
+            ↗
+          </button>
+        </div>
+        <div className="flex items-center gap-4 mb-5 bg-white/5 rounded-2xl p-3">
+          <div className="w-11 h-11 rounded-full bg-purple-100 flex items-center justify-center text-sm font-medium text-purple-800 shrink-0">
+            {initials}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">vs {player}</p>
+            <p className="text-xs text-white/50">{county} {swingType ? `· ${swingType}` : ''}</p>
+          </div>
         </div>
         <div className="flex items-center gap-6">
           <div className="relative w-24 h-24 shrink-0">
@@ -76,17 +120,15 @@ export default function Results() {
           </div>
         </div>
       </div>
-
       <div className="px-5 py-5 flex flex-col gap-6">
         <div>
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
-            Metrics vs {result.player_compared}
+            Metrics vs {player}
           </p>
           <div className="border border-gray-100 rounded-2xl px-4 py-1">
             {metrics.map((m) => <MetricBar key={m.label} {...m} />)}
           </div>
         </div>
-
         <div>
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
             Key improvements
@@ -95,7 +137,6 @@ export default function Results() {
             {tips.map((t) => <TipCard key={t.title} {...t} />)}
           </div>
         </div>
-
         <button
           onClick={() => navigate('/upload')}
           className="w-full py-4 bg-gray-900 text-white rounded-2xl font-medium hover:bg-gray-800 transition-all"
