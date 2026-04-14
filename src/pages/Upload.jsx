@@ -133,7 +133,15 @@ export default function Upload() {
           disabled={loading}
           className="w-full py-4 bg-gray-900 text-white rounded-2xl font-medium hover:bg-gray-800 transition-all disabled:opacity-50"
         >
-          {loading ? (<span className="flex items-center justify-center gap-2"><svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>Analysing…</span>) : 'Analyse swing'}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="h-6 w-6" viewBox="0 0 32 32" style={{animation: 'hurlSwing 0.8s ease-in-out infinite alternate', transformOrigin: '16px 28px'}}>
+                <rect x="15" y="2" width="2" height="24" rx="1" fill="currentColor"/>
+                <path d="M11 2 C11 2 16 0 21 2 C21 2 22 6 16 6 C10 6 11 2 11 2Z" fill="currentColor"/>
+              </svg>
+              Analysing…
+            </span>
+          ) : 'Analyse swing'}
         </button>
       </div>
     </div>
