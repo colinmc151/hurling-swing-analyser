@@ -30,11 +30,8 @@ function normalizePose(pose, panelW, panelH) {
   const hipMid = [(lh[0] + rh[0]) / 2, (lh[1] + rh[1]) / 2]
   const shoulderMid = [(ls[0] + rs[0]) / 2, (ls[1] + rs[1]) / 2]
 
-  // Force torso vertical: rotate so hip -> shoulder points up (negative Y in SVG)
-  const tdx = shoulderMid[0] - hipMid[0]
-  const tdy = shoulderMid[1] - hipMid[1]
-  const torsoLen = Math.hypot(tdx, tdy) || 0.1
-  const rot = -Math.PI / 2 - Math.atan2(tdy, tdx)
+  // Rotate so torso points straight up (SVG: negative Y)
+  const rot = -Math.PI / 2 - Math.atan2(shoulderMid[1] - hipMid[1], shoulderMid[0] - hipMid[0])
   const cos = Math.cos(rot), sin = Math.sin(rot)
 
   const rotated = {}
@@ -44,14 +41,41 @@ function normalizePose(pose, panelW, panelH) {
     rotated[name] = [dx * cos - dy * sin, dx * sin + dy * cos]
   }
 
-  // Consistent scale: torso = 22% of panel height
-  const scale = (panelH * 0.22) / torsoLen
+  // Bounding box of the whole figure AFTER uprighting
+  const allPts = Object.values(rotated)
+  const minX = Math.min(...allPts.map(p => p[0]))
+  const maxX = Math.max(...allPts.map(p => p[0]))
+  const minY = Math.min(...allPts.map(p => p[1]))
+  const maxY = Math.max(...allPts.map(p => p[1]))
+
+  const shoulderW = Math.hypot(
+    rotated.right_shoulder[0] - rotated.left_shoulder[0],
+    rotated.right_shoulder[1] - rotated.left_shoulder[1],
+  ) || 0.05
+
+  // Reserve space above shoulders for head
+  const headClearance = shoulderW * 1.3
+  const bodyH = (maxY - minY) + headClearance
+  const bodyW = Math.max(maxX - minX, shoulderW * 2.5)
+
+  // Fit body into ~70% of panel height and ~80% of panel width
+  const scale = Math.min(
+    (panelH * 0.70) / bodyH,
+    (panelW * 0.80) / bodyW,
+  )
+
+  // Figure center: shift so shoulders leave room for head above
+  const bbCenterX = (minX + maxX) / 2
+  const bbCenterY = (minY + maxY) / 2
   const centerX = panelW / 2
-  const centerY = panelH * 0.62
+  const centerY = panelH * 0.56 + (headClearance * scale) / 2
 
   const out = {}
   for (const [name, p] of Object.entries(rotated)) {
-    out[name] = [centerX + p[0] * scale, centerY + p[1] * scale]
+    out[name] = [
+      centerX + (p[0] - bbCenterX) * scale,
+      centerY + (p[1] - bbCenterY) * scale,
+    ]
   }
   return out
 }
@@ -69,11 +93,14 @@ function Figure({ pose, color, label, panelW, panelH, xOffset = 0 }) {
     )
   }
 
-  const ls = pts.left_shoulder, rs = pts.right_shoulder
-  const smx = (ls[0] + rs[0]) / 2
-  const smy = (ls[1] + rs[1]) / 2
-  const headR = panelH * 0.05
-  const head = { cx: smx, cy: smy - headR * 1.4, r: headR }
+  const shoulderW = Math.hypot(
+    pts.right_shoulder[0] - pts.left_shoulder[0],
+    pts.right_shoulder[1] - pts.left_shoulder[1],
+  )
+  const headR = Math.max(shoulderW * 0.55, 12)
+  const smx = (pts.left_shoulder[0] + pts.right_shoulder[0]) / 2
+  const smy = (pts.left_shoulder[1] + pts.right_shoulder[1]) / 2
+  const head = { cx: smx, cy: smy - headR * 1.3, r: headR }
 
   return (
     <g transform={`translate(${xOffset}, 0)`}>
