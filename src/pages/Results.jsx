@@ -3,6 +3,7 @@ import NavBar from '../components/NavBar'
 import MetricBar from '../components/MetricBar'
 import TipCard from '../components/TipCard'
 import SwingOverlay from '../components/SwingOverlay'
+import ShareAndNotes from '../components/ShareAndNotes'
 
 const labels = {
   hip_rotation: 'Hip rotation',
@@ -32,6 +33,7 @@ export default function Results() {
   const location = useLocation()
   const result = location.state?.result
   const swingType = location.state?.swingType
+  const swingId = location.state?.swingId
 
   if (!result) {
     return (
@@ -132,6 +134,7 @@ export default function Results() {
         </div>
 
         <SwingOverlay videoUrl={location.state?.videoUrl} track={result.track} metrics={result.metrics} player={player} />
+        <ShareAndNotes swingId={swingId} />
 
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">

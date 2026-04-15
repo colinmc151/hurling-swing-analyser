@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import NavBar from '../components/NavBar'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 const players = [
   { id: 1, initials: 'HS', name: 'Henry Shefflin', role: 'Kilkenny · All-Ireland × 10' },
@@ -13,51 +15,96 @@ const swingTypes = ['Ground stroke', 'Overhead', 'Puck out', 'Sideline cut']
 
 export default function Upload() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [athletes, setAthletes] = useState([])
+  const [athleteId, setAthleteId] = useState('')
   const [selectedPlayer, setSelectedPlayer] = useState(1)
   const [selectedSwing, setSelectedSwing] = useState('Ground stroke')
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState('')
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!user) return
+    supabase.from('athletes').select('*').eq('owner_user_id', user.id).order('created_at').then(({ data }) => {
+      const list = data || []
+      setAthletes(list)
+      if (list.length > 0) setAthleteId((list.find((a) => a.is_self) || list[0]).id)
+    })
+  }, [user])
 
   function handleFile(e) {
     if (e.target.files[0]) setFile(e.target.files[0])
   }
 
   async function handleAnalyse() {
-    if (!file) {
-      setError('Please select a video first.')
-      return
-    }
+    if (!athleteId) return setError('Add an athlete in your profile first.')
+    if (!file) return setError('Please select a video first.')
     setLoading(true)
     setError(null)
     const playerName = players.find((p) => p.id === selectedPlayer).name
-    const formData = new FormData()
-    formData.append('video', file)
-    formData.append('player', playerName)
 
     try {
-      const res = await fetch('https://hurling-swing-analyser.onrender.com/analyse', {
-        method: 'POST',
-        body: formData,
-      })
+      setProgress('Analysing swing…')
+      const formData = new FormData()
+      formData.append('video', file)
+      formData.append('player', playerName)
+      const res = await fetch('https://hurling-swing-analyser.onrender.com/analyse', { method: 'POST', body: formData })
       const data = await res.json()
-      if (data.error) {
-        setError(data.error)
-        setLoading(false)
-        return
-      }
+      if (data.error) { setError(data.error); setLoading(false); return }
+
+      setProgress('Uploading video…')
+      const ext = file.name.split('.').pop() || 'mp4'
+      const path = `${user.id}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('swing-videos').upload(path, file, { contentType: file.type })
+      if (upErr) console.warn('Video upload failed:', upErr.message)
+
+      setProgress('Saving swing…')
+      const { data: swing, error: insErr } = await supabase.from('swings').insert({
+        user_id: user.id,
+        athlete_id: athleteId,
+        swing_type: selectedSwing,
+        video_path: upErr ? null : path,
+        metrics: data.metrics,
+        phases: data.phases,
+      }).select().single()
+      if (insErr) console.warn('Save swing failed:', insErr.message)
+
       const videoUrl = URL.createObjectURL(file)
-      navigate('/results', { state: { result: data, swingType: selectedSwing, videoUrl } })
+      navigate('/results', { state: { result: data, swingType: selectedSwing, videoUrl, swingId: swing?.id, player: playerName } })
     } catch (err) {
       setError('Could not reach the backend. Please wait 30s and try again.')
       setLoading(false)
     }
   }
 
+  if (athletes.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white">
+        <NavBar title="New analysis" backTo="/" />
+        <div className="px-5 py-8 text-center">
+          <p className="text-slate-400 mb-4">You need at least one athlete before you can analyse a swing.</p>
+          <button onClick={() => navigate('/profile')} className="px-5 py-2 bg-amber-400 text-gray-900 rounded-xl font-semibold">Add athlete in profile</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-950">
       <NavBar title="New analysis" backTo="/" />
       <div className="px-5 py-5 flex flex-col gap-6">
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Athlete</p>
+          <select value={athleteId} onChange={(e) => setAthleteId(e.target.value)}
+            className="w-full px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none">
+            {athletes.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}{a.is_self ? ' (you)' : ''}</option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Your video</p>
           <label className="w-full border-2 border-dashed border-white/10 rounded-2xl p-6 flex flex-col items-center gap-3 cursor-pointer hover:border-white/20 hover:bg-white/5 transition-all">
@@ -82,15 +129,8 @@ export default function Upload() {
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Swing type</p>
           <div className="grid grid-cols-2 gap-2">
             {swingTypes.map((t) => (
-              <button
-                key={t}
-                onClick={() => setSelectedSwing(t)}
-                className={`p-3 rounded-xl border text-sm font-medium transition-all ${
-                  selectedSwing === t
-                    ? 'border-amber-400 bg-amber-400 text-gray-900'
-                    : 'border-white/10 text-gray-400 hover:border-white/20'
-                }`}
-              >
+              <button key={t} onClick={() => setSelectedSwing(t)}
+                className={`p-3 rounded-xl border text-sm font-medium transition-all ${selectedSwing === t ? 'border-amber-400 bg-amber-400 text-gray-900' : 'border-white/10 text-gray-400 hover:border-white/20'}`}>
                 {t}
               </button>
             ))}
@@ -101,23 +141,14 @@ export default function Upload() {
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Compare against</p>
           <div className="flex flex-col gap-2">
             {players.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedPlayer(p.id)}
-                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left ${
-                  selectedPlayer === p.id ? 'border-amber-400 border-2' : 'border-white/10 hover:border-white/20'
-                }`}
-              >
-                <div className="w-11 h-11 rounded-full bg-purple-900/50 flex items-center justify-center text-sm font-medium text-purple-300 shrink-0">
-                  {p.initials}
-                </div>
+              <button key={p.id} onClick={() => setSelectedPlayer(p.id)}
+                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left ${selectedPlayer === p.id ? 'border-amber-400 border-2' : 'border-white/10 hover:border-white/20'}`}>
+                <div className="w-11 h-11 rounded-full bg-purple-900/50 flex items-center justify-center text-sm font-medium text-purple-300 shrink-0">{p.initials}</div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-white">{p.name}</p>
                   <p className="text-xs text-gray-500">{p.role}</p>
                 </div>
-                <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${
-                  selectedPlayer === p.id ? 'bg-amber-400 border-amber-400 text-gray-900' : 'border-gray-600'
-                }`}>
+                <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs ${selectedPlayer === p.id ? 'bg-amber-400 border-amber-400 text-gray-900' : 'border-gray-600'}`}>
                   {selectedPlayer === p.id && '✓'}
                 </div>
               </button>
@@ -125,22 +156,17 @@ export default function Upload() {
           </div>
         </div>
 
-        {error && (
-          <div className="p-3 bg-red-900/30 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>
-        )}
+        {error && <div className="p-3 bg-red-900/30 border border-red-500/30 rounded-xl text-sm text-red-400">{error}</div>}
 
-        <button
-          onClick={handleAnalyse}
-          disabled={loading}
-          className="w-full py-4 bg-amber-400 text-gray-900 rounded-2xl font-semibold hover:bg-amber-300 transition-all disabled:opacity-50"
-        >
+        <button onClick={handleAnalyse} disabled={loading}
+          className="w-full py-4 bg-amber-400 text-gray-900 rounded-2xl font-semibold hover:bg-amber-300 transition-all disabled:opacity-50">
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="h-6 w-6" viewBox="0 0 32 32" style={{animation: 'hurlSwing 0.8s ease-in-out infinite alternate', transformOrigin: '16px 28px'}}>
                 <rect x="15" y="2" width="2" height="24" rx="1" fill="currentColor"/>
                 <path d="M11 2 C11 2 16 0 21 2 C21 2 22 6 16 6 C10 6 11 2 11 2Z" fill="currentColor"/>
               </svg>
-              Analysing…
+              {progress || 'Analysing…'}
             </span>
           ) : 'Analyse swing'}
         </button>
