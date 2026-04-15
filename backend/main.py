@@ -69,6 +69,10 @@ async def analyse(
         "tips": tips,
         "player_compared": player,
         "phases": phases,
+        "track": result.get("track", []),
+        "fps": result.get("fps", 30),
+        "video_width": result.get("video_width", 0),
+        "video_height": result.get("video_height", 0),
     }
 
 

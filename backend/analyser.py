@@ -4,7 +4,6 @@ import numpy as np
 
 mp_pose = mp.solutions.pose
 
-# Landmark indices we care about for the stick figure
 KEY_LANDMARKS = {
     "nose": 0,
     "left_shoulder": 11,
@@ -42,6 +41,14 @@ def extract_pose_points(landmarks):
     }
 
 
+def extract_pose_points_2d(landmarks):
+    """Return a compact dict of {name: [x, y]} for overlay rendering."""
+    return {
+        name: [round(landmarks[idx].x, 4), round(landmarks[idx].y, 4)]
+        for name, idx in KEY_LANDMARKS.items()
+    }
+
+
 def compute_metrics(pts):
     """Compute the 6 swing metrics from a single frame's pose points."""
     left_hip = pts["left_hip"][:2]
@@ -72,9 +79,14 @@ def compute_metrics(pts):
 
 
 def analyse_video(video_path: str) -> dict:
-    """Return metrics averaged across frames, plus landmarks at 4 key phases."""
+    """Return metrics, phases, and per-frame pose track for overlay rendering."""
     cap = cv2.VideoCapture(video_path)
-    all_frames = []  # list of (metrics, pose_points, wrist_y)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+
+    all_frames = []  # list of (metrics, pose_points_3d, wrist_y, pose_points_2d, timestamp)
+    frame_idx = 0
 
     with mp_pose.Pose(
         min_detection_confidence=0.5,
@@ -84,13 +96,16 @@ def analyse_video(video_path: str) -> dict:
             ret, frame = cap.read()
             if not ret:
                 break
+            timestamp = frame_idx / fps
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = pose.process(image)
             if results.pose_landmarks:
                 pts = extract_pose_points(results.pose_landmarks.landmark)
+                pts2d = extract_pose_points_2d(results.pose_landmarks.landmark)
                 metrics = compute_metrics(pts)
                 wrist_y = min(pts["left_wrist"][1], pts["right_wrist"][1])
-                all_frames.append((metrics, pts, wrist_y))
+                all_frames.append((metrics, pts, wrist_y, pts2d, timestamp))
+            frame_idx += 1
     cap.release()
 
     if not all_frames:
@@ -104,17 +119,13 @@ def analyse_video(video_path: str) -> dict:
 
     # Identify phase frames
     n = len(all_frames)
-    # setup: first frame
     setup_idx = 0
-    # backswing: frame with highest wrists (lowest y value, since 0 is top)
     backswing_idx = min(range(n), key=lambda i: all_frames[i][2])
-    # contact: frame with lowest wrists (highest y value) — ideally after backswing
     after_backswing = list(range(backswing_idx, n))
     if after_backswing:
         contact_idx = max(after_backswing, key=lambda i: all_frames[i][2])
     else:
         contact_idx = n // 2
-    # follow_through: last frame
     follow_idx = n - 1
 
     phases = {
@@ -124,7 +135,17 @@ def analyse_video(video_path: str) -> dict:
         "follow_through": all_frames[follow_idx][1],
     }
 
+    # Per-frame track for video overlay (compact 2d + timestamp)
+    track = [
+        {"t": round(f[4], 3), "pts": f[3]}
+        for f in all_frames
+    ]
+
     return {
         "metrics": averaged,
         "phases": phases,
+        "track": track,
+        "fps": round(fps, 2),
+        "video_width": width,
+        "video_height": height,
     }
