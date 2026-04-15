@@ -1,3 +1,4 @@
+import SwingDetail from './pages/SwingDetail'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -19,7 +20,8 @@ export default function App() {
           <Route path="/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/coach" element={<ProtectedRoute><Coach /></ProtectedRoute>} />
-        </Routes>
+                <Route path="/swing/:id" element={<ProtectedRoute><SwingDetail /></ProtectedRoute>} />
+      </Routes>
       </BrowserRouter>
     </AuthProvider>
   )

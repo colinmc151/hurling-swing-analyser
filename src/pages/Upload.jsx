@@ -58,7 +58,7 @@ export default function Upload() {
       const ext = file.name.split('.').pop() || 'mp4'
       const path = `${user.id}/${Date.now()}.${ext}`
       const { error: upErr } = await supabase.storage.from('swing-videos').upload(path, file, { contentType: file.type })
-      if (upErr) console.warn('Video upload failed:', upErr.message)
+      if (upErr) console.warn('Video upload failed (will still save swing):', upErr.message)
 
       setProgress('Saving swing…')
       const { data: swing, error: insErr } = await supabase.from('swings').insert({
@@ -69,7 +69,7 @@ export default function Upload() {
         metrics: data.metrics,
         phases: data.phases,
       }).select().single()
-      if (insErr) console.warn('Save swing failed:', insErr.message)
+      if (insErr) { setError('Save failed: ' + insErr.message); setLoading(false); return }
 
       const videoUrl = URL.createObjectURL(file)
       navigate('/results', { state: { result: data, swingType: selectedSwing, videoUrl, swingId: swing?.id, player: playerName } })
