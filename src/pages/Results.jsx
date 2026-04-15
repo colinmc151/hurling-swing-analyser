@@ -131,7 +131,7 @@ export default function Results() {
           </div>
         </div>
 
-        <SwingOverlay videoUrl={location.state?.videoUrl} track={result.track} />
+        <SwingOverlay videoUrl={location.state?.videoUrl} track={result.track} metrics={result.metrics} player={player} />
 
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
