@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import MetricBar from '../components/MetricBar'
 import TipCard from '../components/TipCard'
-import PhaseBreakdown from '../components/PhaseBreakdown'
+import SwingOverlay from '../components/SwingOverlay'
 
 const labels = {
   hip_rotation: 'Hip rotation',
@@ -131,7 +131,7 @@ export default function Results() {
           </div>
         </div>
 
-        <PhaseBreakdown userPhases={result.phases} player={player} />
+        <SwingOverlay videoUrl={location.state?.videoUrl} track={result.track} />
 
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">

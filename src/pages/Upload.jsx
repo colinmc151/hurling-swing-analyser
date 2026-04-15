@@ -46,7 +46,8 @@ export default function Upload() {
         setLoading(false)
         return
       }
-      navigate('/results', { state: { result: data, swingType: selectedSwing } })
+      const videoUrl = URL.createObjectURL(file)
+      navigate('/results', { state: { result: data, swingType: selectedSwing, videoUrl } })
     } catch (err) {
       setError('Could not reach the backend. Please wait 30s and try again.')
       setLoading(false)
