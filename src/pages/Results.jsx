@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import MetricBar from '../components/MetricBar'
 import TipCard from '../components/TipCard'
+import PhaseBreakdown from '../components/PhaseBreakdown'
 
 const labels = {
   hip_rotation: 'Hip rotation',
@@ -129,6 +130,9 @@ export default function Results() {
             {metrics.map((m) => <MetricBar key={m.label} {...m} />)}
           </div>
         </div>
+
+        <PhaseBreakdown userPhases={result.phases} player={player} />
+
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
             Key improvements
