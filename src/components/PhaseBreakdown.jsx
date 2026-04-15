@@ -33,7 +33,7 @@ export default function PhaseBreakdown({ userPhases, player }) {
   return (
     <div>
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
-        3D swing breakdown
+        Swing breakdown
       </p>
       <div className="bg-white/5 rounded-2xl p-4">
         <div className="flex gap-2 mb-4 overflow-x-auto">

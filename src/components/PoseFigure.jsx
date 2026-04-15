@@ -21,55 +21,63 @@ const JOINTS = [
   'left_knee','right_knee','left_ankle','right_ankle',
 ]
 
-function normalizePose(pose, panelW, panelH, padTop = 40, padSide = 20, padBot = 20) {
+function normalizePose(pose, panelW, panelH) {
   if (!pose) return null
-  const pts = Object.values(pose).map(p => ({ x: p[0], y: p[1] }))
-  if (!pts.length) return null
-  const minX = Math.min(...pts.map(p => p.x))
-  const maxX = Math.max(...pts.map(p => p.x))
-  const minY = Math.min(...pts.map(p => p.y))
-  const maxY = Math.max(...pts.map(p => p.y))
-  const w = maxX - minX || 1
-  const h = maxY - minY || 1
-  const availW = panelW - padSide * 2
-  const availH = panelH - padTop - padBot
-  const scale = Math.min(availW / w, availH / h)
-  const offsetX = padSide + (availW - w * scale) / 2 - minX * scale
-  const offsetY = padTop + (availH - h * scale) / 2 - minY * scale
-  const out = {}
+  const ls = pose.left_shoulder, rs = pose.right_shoulder
+  const lh = pose.left_hip, rh = pose.right_hip
+  if (!ls || !rs || !lh || !rh) return null
+
+  const hipMid = [(lh[0] + rh[0]) / 2, (lh[1] + rh[1]) / 2]
+  const shoulderMid = [(ls[0] + rs[0]) / 2, (ls[1] + rs[1]) / 2]
+
+  // Force torso vertical: rotate so hip -> shoulder points up (negative Y in SVG)
+  const tdx = shoulderMid[0] - hipMid[0]
+  const tdy = shoulderMid[1] - hipMid[1]
+  const torsoLen = Math.hypot(tdx, tdy) || 0.1
+  const rot = -Math.PI / 2 - Math.atan2(tdy, tdx)
+  const cos = Math.cos(rot), sin = Math.sin(rot)
+
+  const rotated = {}
   for (const [name, p] of Object.entries(pose)) {
-    out[name] = [p[0] * scale + offsetX, p[1] * scale + offsetY]
+    const dx = p[0] - hipMid[0]
+    const dy = p[1] - hipMid[1]
+    rotated[name] = [dx * cos - dy * sin, dx * sin + dy * cos]
+  }
+
+  // Consistent scale: torso = 22% of panel height
+  const scale = (panelH * 0.22) / torsoLen
+  const centerX = panelW / 2
+  const centerY = panelH * 0.62
+
+  const out = {}
+  for (const [name, p] of Object.entries(rotated)) {
+    out[name] = [centerX + p[0] * scale, centerY + p[1] * scale]
   }
   return out
 }
 
 function Figure({ pose, color, label, panelW, panelH, xOffset = 0 }) {
   const pts = useMemo(() => normalizePose(pose, panelW, panelH), [pose, panelW, panelH])
+  const labelY = 20
+
   if (!pts) {
     return (
       <g transform={`translate(${xOffset}, 0)`}>
-        <text x={panelW / 2} y={20} textAnchor="middle" fill={color} fontSize={13} fontWeight={600}>{label}</text>
+        <text x={panelW / 2} y={labelY} textAnchor="middle" fill={color} fontSize={12} fontWeight={700}>{label}</text>
         <text x={panelW / 2} y={panelH / 2} textAnchor="middle" fill="#6b7280" fontSize={11}>no pose</text>
       </g>
     )
   }
+
   const ls = pts.left_shoulder, rs = pts.right_shoulder
-  const lh = pts.left_hip, rh = pts.right_hip
-  let head = null
-  if (ls && rs && lh && rh) {
-    const smx = (ls[0] + rs[0]) / 2
-    const smy = (ls[1] + rs[1]) / 2
-    const hmx = (lh[0] + rh[0]) / 2
-    const hmy = (lh[1] + rh[1]) / 2
-    const torso = Math.hypot(smx - hmx, smy - hmy) || 40
-    const r = torso * 0.28
-    const dx = smx - hmx, dy = smy - hmy
-    const len = Math.hypot(dx, dy) || 1
-    head = { cx: smx + (dx/len) * r * 1.2, cy: smy + (dy/len) * r * 1.2, r }
-  }
+  const smx = (ls[0] + rs[0]) / 2
+  const smy = (ls[1] + rs[1]) / 2
+  const headR = panelH * 0.05
+  const head = { cx: smx, cy: smy - headR * 1.4, r: headR }
+
   return (
     <g transform={`translate(${xOffset}, 0)`}>
-      <text x={panelW / 2} y={20} textAnchor="middle" fill={color} fontSize={13} fontWeight={700}>{label}</text>
+      <text x={panelW / 2} y={labelY} textAnchor="middle" fill={color} fontSize={12} fontWeight={700}>{label}</text>
       {EDGES.map(([a, b], i) =>
         pts[a] && pts[b] ? (
           <line key={i} x1={pts[a][0]} y1={pts[a][1]} x2={pts[b][0]} y2={pts[b][1]}
@@ -78,17 +86,17 @@ function Figure({ pose, color, label, panelW, panelH, xOffset = 0 }) {
       )}
       {JOINTS.map(name =>
         pts[name] ? (
-          <circle key={name} cx={pts[name][0]} cy={pts[name][1]} r={4} fill={color} />
+          <circle key={name} cx={pts[name][0]} cy={pts[name][1]} r={3.5} fill={color} />
         ) : null
       )}
-      {head && <circle cx={head.cx} cy={head.cy} r={head.r} fill="none" stroke={color} strokeWidth={4} />}
+      <circle cx={head.cx} cy={head.cy} r={head.r} fill="none" stroke={color} strokeWidth={4} />
     </g>
   )
 }
 
 export default function PoseFigure({ userPose, proPose, proLabel = 'Pro' }) {
   const panelW = 300
-  const panelH = 320
+  const panelH = 340
   const gap = 16
   const totalW = panelW * 2 + gap
   return (
