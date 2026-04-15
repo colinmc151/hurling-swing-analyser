@@ -1,9 +1,10 @@
+import Header from '../components/Header'
 import { useNavigate } from 'react-router-dom'
 
 export default function Home() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-950"><Header />
       <div className="px-5 pt-12 pb-8 text-white">
         <div className="flex items-center gap-3 mb-2">
           <svg className="h-8 w-8" viewBox="0 0 32 32">
