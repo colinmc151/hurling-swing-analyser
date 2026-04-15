@@ -53,14 +53,14 @@ export default function PhaseBreakdown({ userPhases, player }) {
         </div>
 
         <div className="aspect-square bg-gray-900 rounded-xl overflow-hidden">
-          <PoseFigure
+          <PoseFigure proLabel={player}
             userPose={userPhases[activePhase]}
             proPose={proPhases?.[activePhase]}
           />
         </div>
 
         <p className="text-xs text-gray-500 mt-3 text-center">
-          {PHASES.find((p) => p.key === activePhase)?.desc} · drag to rotate
+          {PHASES.find((p) => p.key === activePhase)?.desc}
         </p>
 
         <div className="flex items-center justify-center gap-4 mt-3 text-xs">

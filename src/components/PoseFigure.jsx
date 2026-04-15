@@ -1,139 +1,102 @@
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
 import { useMemo } from 'react'
-import * as THREE from 'three'
 
-const BONES = [
+const EDGES = [
   ['left_shoulder', 'right_shoulder'],
+  ['left_shoulder', 'left_hip'],
+  ['right_shoulder', 'right_hip'],
+  ['left_hip', 'right_hip'],
   ['left_shoulder', 'left_elbow'],
   ['left_elbow', 'left_wrist'],
   ['right_shoulder', 'right_elbow'],
   ['right_elbow', 'right_wrist'],
-  ['left_shoulder', 'left_hip'],
-  ['right_shoulder', 'right_hip'],
-  ['left_hip', 'right_hip'],
   ['left_hip', 'left_knee'],
   ['left_knee', 'left_ankle'],
   ['right_hip', 'right_knee'],
   ['right_knee', 'right_ankle'],
 ]
 
-// Convert MediaPipe coords to scene coords, with optional x-offset for side-by-side
-function toVec(point, xOffset = 0) {
-  return new THREE.Vector3(
-    (point[0] - 0.5) * 1.4 + xOffset,
-    -(point[1] - 0.5) * 1.6 + 0.2, // shift up so feet near floor
-    -point[2] * 1.4
-  )
-}
+const JOINTS = [
+  'left_shoulder','right_shoulder','left_elbow','right_elbow',
+  'left_wrist','right_wrist','left_hip','right_hip',
+  'left_knee','right_knee','left_ankle','right_ankle',
+]
 
-function Bone({ start, end, color, radius = 0.035 }) {
-  const { position, quaternion, length } = useMemo(() => {
-    const dir = new THREE.Vector3().subVectors(end, start)
-    const length = dir.length()
-    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5)
-    const quat = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      dir.clone().normalize()
-    )
-    return { position: mid, quaternion: quat, length }
-  }, [start, end])
-
-  return (
-    <mesh position={position} quaternion={quaternion}>
-      <cylinderGeometry args={[radius, radius, length, 8]} />
-      <meshStandardMaterial color={color} roughness={0.6} />
-    </mesh>
-  )
-}
-
-function Joint({ point, color, radius = 0.06 }) {
-  return (
-    <mesh position={point}>
-      <sphereGeometry args={[radius, 12, 12]} />
-      <meshStandardMaterial color={color} roughness={0.5} />
-    </mesh>
-  )
-}
-
-function Skeleton({ pose, color, xOffset = 0, label }) {
+function normalizePose(pose, panelW, panelH, padTop = 40, padSide = 20, padBot = 20) {
   if (!pose) return null
+  const pts = Object.values(pose).map(p => ({ x: p[0], y: p[1] }))
+  if (!pts.length) return null
+  const minX = Math.min(...pts.map(p => p.x))
+  const maxX = Math.max(...pts.map(p => p.x))
+  const minY = Math.min(...pts.map(p => p.y))
+  const maxY = Math.max(...pts.map(p => p.y))
+  const w = maxX - minX || 1
+  const h = maxY - minY || 1
+  const availW = panelW - padSide * 2
+  const availH = panelH - padTop - padBot
+  const scale = Math.min(availW / w, availH / h)
+  const offsetX = padSide + (availW - w * scale) / 2 - minX * scale
+  const offsetY = padTop + (availH - h * scale) / 2 - minY * scale
+  const out = {}
+  for (const [name, p] of Object.entries(pose)) {
+    out[name] = [p[0] * scale + offsetX, p[1] * scale + offsetY]
+  }
+  return out
+}
 
-  const points = useMemo(() => {
-    const p = {}
-    Object.entries(pose).forEach(([name, pt]) => {
-      p[name] = toVec(pt, xOffset)
-    })
-    return p
-  }, [pose, xOffset])
-
-  // Head: above the shoulders, using nose position
-  const headPos = useMemo(() => {
-    if (!points.nose) return null
-    const head = points.nose.clone()
-    head.y += 0.05
-    return head
-  }, [points.nose])
-
+function Figure({ pose, color, label, panelW, panelH, xOffset = 0 }) {
+  const pts = useMemo(() => normalizePose(pose, panelW, panelH), [pose, panelW, panelH])
+  if (!pts) {
+    return (
+      <g transform={`translate(${xOffset}, 0)`}>
+        <text x={panelW / 2} y={20} textAnchor="middle" fill={color} fontSize={13} fontWeight={600}>{label}</text>
+        <text x={panelW / 2} y={panelH / 2} textAnchor="middle" fill="#6b7280" fontSize={11}>no pose</text>
+      </g>
+    )
+  }
+  const ls = pts.left_shoulder, rs = pts.right_shoulder
+  const lh = pts.left_hip, rh = pts.right_hip
+  let head = null
+  if (ls && rs && lh && rh) {
+    const smx = (ls[0] + rs[0]) / 2
+    const smy = (ls[1] + rs[1]) / 2
+    const hmx = (lh[0] + rh[0]) / 2
+    const hmy = (lh[1] + rh[1]) / 2
+    const torso = Math.hypot(smx - hmx, smy - hmy) || 40
+    const r = torso * 0.28
+    const dx = smx - hmx, dy = smy - hmy
+    const len = Math.hypot(dx, dy) || 1
+    head = { cx: smx + (dx/len) * r * 1.2, cy: smy + (dy/len) * r * 1.2, r }
+  }
   return (
-    <group>
-      {BONES.map(([a, b], i) => (
-        <Bone key={i} start={points[a]} end={points[b]} color={color} />
-      ))}
-      {Object.entries(points).map(([name, p]) =>
-        name === 'nose' ? null : <Joint key={name} point={p} color={color} />
+    <g transform={`translate(${xOffset}, 0)`}>
+      <text x={panelW / 2} y={20} textAnchor="middle" fill={color} fontSize={13} fontWeight={700}>{label}</text>
+      {EDGES.map(([a, b], i) =>
+        pts[a] && pts[b] ? (
+          <line key={i} x1={pts[a][0]} y1={pts[a][1]} x2={pts[b][0]} y2={pts[b][1]}
+            stroke={color} strokeWidth={5} strokeLinecap="round" strokeOpacity={0.9} />
+        ) : null
       )}
-      {headPos && (
-        <mesh position={headPos}>
-          <sphereGeometry args={[0.13, 16, 16]} />
-          <meshStandardMaterial color={color} roughness={0.5} />
-        </mesh>
+      {JOINTS.map(name =>
+        pts[name] ? (
+          <circle key={name} cx={pts[name][0]} cy={pts[name][1]} r={4} fill={color} />
+        ) : null
       )}
-      {label && (
-        <mesh position={[xOffset, -1.05, 0]}>
-          <planeGeometry args={[0.7, 0.18]} />
-          <meshBasicMaterial color="#000000" transparent opacity={0.6} />
-        </mesh>
-      )}
-    </group>
+      {head && <circle cx={head.cx} cy={head.cy} r={head.r} fill="none" stroke={color} strokeWidth={4} />}
+    </g>
   )
 }
 
-function Floor() {
+export default function PoseFigure({ userPose, proPose, proLabel = 'Pro' }) {
+  const panelW = 300
+  const panelH = 320
+  const gap = 16
+  const totalW = panelW * 2 + gap
   return (
-    <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]} receiveShadow>
-        <planeGeometry args={[10, 10]} />
-        <meshStandardMaterial color="#1F2937" roughness={0.8} />
-      </mesh>
-      <gridHelper args={[10, 20, '#374151', '#1F2937']} position={[0, -0.99, 0]} />
-    </>
-  )
-}
-
-export default function PoseFigure({ userPose, proPose }) {
-  const offset = 0.85
-  return (
-    <Canvas
-      shadows
-      camera={{ position: [0, 0.5, 4.2], fov: 45 }}
-    >
-      <ambientLight intensity={0.45} />
-      <directionalLight
-        position={[3, 5, 4]}
-        intensity={0.9}
-        castShadow
-      />
-      <Floor />
-      <Skeleton pose={userPose} color="#FFFFFF" xOffset={-offset} label="You" />
-      <Skeleton pose={proPose} color="#FBBF24" xOffset={offset} label="Pro" />
-      <OrbitControls
-        enableZoom={true}
-        enablePan={false}
-        minDistance={2.5}
-        maxDistance={6}
-        target={[0, 0, 0]}
-      />
-    </Canvas>
+    <svg viewBox={`0 0 ${totalW} ${panelH}`} className="w-full h-auto" style={{ maxHeight: '55vh' }}>
+      <rect x={0} y={0} width={panelW} height={panelH} fill="rgba(255,255,255,0.03)" rx={10} />
+      <rect x={panelW + gap} y={0} width={panelW} height={panelH} fill="rgba(251,191,36,0.05)" rx={10} />
+      <Figure pose={userPose} color="#ffffff" label="You" panelW={panelW} panelH={panelH} xOffset={0} />
+      <Figure pose={proPose} color="#fbbf24" label={proLabel} panelW={panelW} panelH={panelH} xOffset={panelW + gap} />
+    </svg>
   )
 }
