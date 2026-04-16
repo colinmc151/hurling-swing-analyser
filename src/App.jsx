@@ -1,3 +1,5 @@
+import CoachVideoLibrary from './pages/CoachVideoLibrary'
+import SwingLibrary from './pages/SwingLibrary'
 import SwingDetail from './pages/SwingDetail'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
@@ -21,6 +23,8 @@ export default function App() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/coach" element={<ProtectedRoute><Coach /></ProtectedRoute>} />
                 <Route path="/swing/:id" element={<ProtectedRoute><SwingDetail /></ProtectedRoute>} />
+              <Route path="/library" element={<ProtectedRoute><SwingLibrary /></ProtectedRoute>} />
+              <Route path="/coach/videos" element={<ProtectedRoute><CoachVideoLibrary /></ProtectedRoute>} />
       </Routes>
       </BrowserRouter>
     </AuthProvider>

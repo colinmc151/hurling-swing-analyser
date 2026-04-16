@@ -23,9 +23,12 @@ export default function NavBar({ title, backTo }) {
       )}
       <h1 className="text-lg font-medium text-white flex-1">{title}</h1>
       {user && (
-        <div className="flex items-center gap-3 text-sm">
-          <Link to="/profile" className="text-slate-300 hover:text-white">Profile</Link>
-          <button onClick={logout} className="text-slate-300 hover:text-white">Log out</button>
+        <div className="flex items-center gap-3 text-sm text-slate-300">
+          <Link to="/library" className="hover:text-white">Library</Link>
+          <Link to="/coach" className="hover:text-white">Coach</Link>
+          <Link to="/coach/videos" className="hover:text-white">Videos</Link>
+          <Link to="/profile" className="hover:text-white">Profile</Link>
+          <button onClick={logout} className="hover:text-white">Log out</button>
         </div>
       )}
     </div>
